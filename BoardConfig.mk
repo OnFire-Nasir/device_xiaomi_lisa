@@ -177,8 +177,7 @@ ENABLE_VENDOR_RIL_SERVICE := true
 TARGET_SCREEN_DENSITY := 440
 
 # Security patch level
-VENDOR_SECURITY_PATCH := 2023-02-01
-PLATFORM_SECURITY_PATCH := $(VENDOR_SECURITY_PATCH)
+VENDOR_SECURITY_PATCH := 2023-27-06
 
 # Sepolicy
 include device/qcom/sepolicy_vndr-legacy-um/SEPolicy.mk
