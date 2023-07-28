@@ -113,9 +113,6 @@ on boot
     # Create persist for camera calibration data
     mkdir /mnt/vendor/persist/camera 0755 system cameraserver
 
-    # limit discard size to 128MB in order to avoid long IO latency
-    write /sys/block/sda/queue/discard_max_bytes 134217728
-
     # Enable qcrild and data services
     enable vendor.qcrild
     enable vendor.qcrild2
@@ -128,9 +125,6 @@ on post-fs-data
 
     # Create directory used by display clients
     mkdir /data/vendor/display 0770 system graphics
-
-    # Change lm related dirs
-    mkdir /data/vendor/lm 0700 root root
 
     # Create directory used by media clients
     mkdir /data/vendor/media 0770 mediacodec media
@@ -194,15 +188,7 @@ on post-fs-data
     # Create /data/time folder for time-services
     mkdir /data/vendor/time/ 0700 system system
 
-    # Create PERFD deamon related dirs
-    mkdir /data/vendor/perfd 0770 root system
-    chmod 2770 /data/vendor/perfd
-    rm /data/vendor/perfd/default_values
-
     mkdir /data/vendor/secure_element 0777 system system
-
-    # Create IOP  deamon related dirs
-    mkdir /data/vendor/iop 0700 root system
 
     # Mark the copy complete flag to not completed
     write /data/vendor/radio/copy_complete 0
@@ -230,18 +216,6 @@ on post-fs-data
     mkdir /data/vendor/vpp 0770 media media
 
     setprop vold.post_fs_data_done 1
-
-service qcomsysd /system/vendor/bin/qcom-system-daemon
-    class main
-    user root
-    group root diag oem_2901
-    disabled
-
-on property:persist.vendor.qcomsysd.enabled=1
-    enable qcomsysd
-
-on property:persist.vendor.qcomsysd.enabled=0
-    stop qcomsysd
 
 on property:sys.boot_completed=1
     # Enable UFS clock scaling back
@@ -296,6 +270,9 @@ service loc_launcher /system/vendor/bin/loc_launcher
     user gps
     group gps
 
+on property:persist.sys.xtra-daemon.enabled=*
+    restart loc_launcher
+
 service qcom-sh /vendor/bin/init.qcom.sh
     class late_start
     user root
@@ -331,6 +308,6 @@ service vendor.audio-hal /vendor/bin/hw/android.hardware.audio.service
     group audio camera drmrpc inet media mediadrm net_bt net_bt_admin net_bw_acct oem_2901 wakelock
     capabilities BLOCK_SUSPEND
     ioprio rt 4
-    writepid /dev/cpuset/foreground/tasks /dev/stune/foreground/tasks
+    task_profiles ProcessCapacityHigh HighPerformance
     socket audio_hw_socket seqpacket 0666 system system
     onrestart restart audioserver

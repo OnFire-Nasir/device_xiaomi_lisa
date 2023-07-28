@@ -34,8 +34,6 @@ function configure_zram_parameters() {
 	MemTotalStr=`cat /proc/meminfo | grep MemTotal`
 	MemTotal=${MemTotalStr:16:8}
 
-	low_ram=`getprop ro.config.low_ram`
-
 	# Zram disk - 75% for Go and < 2GB devices .
 	# For >2GB Non-Go devices, size = 50% of RAM size. Limit the size to 4GB.
 	# And enable lz4 zram compression for Go targets.
@@ -53,9 +51,7 @@ function configure_zram_parameters() {
 		let zRamSizeMB=4096
 	fi
 
-	if [ "$low_ram" == "true" ]; then
-		echo lz4 > /sys/block/zram0/comp_algorithm
-	fi
+	echo lz4 > /sys/block/zram0/comp_algorithm
 
 	if [ -f /sys/block/zram0/disksize ]; then
 		if [ -f /sys/block/zram0/use_dedup ]; then
@@ -75,30 +71,6 @@ function configure_zram_parameters() {
 		mkswap /dev/block/zram0
 		swapon /dev/block/zram0 -p 32758
 	fi
-}
-
-function configure_read_ahead_kb_values() {
-	MemTotalStr=`cat /proc/meminfo | grep MemTotal`
-	MemTotal=${MemTotalStr:16:8}
-
-	dmpts=$(ls /sys/block/*/queue/read_ahead_kb | grep -e dm -e mmc)
-
-	# Set 128 for <= 3GB &
-	# set 512 for >= 4GB targets.
-	if [ $MemTotal -le 3145728 ]; then
-		ra_kb=128
-	else
-		ra_kb=512
-	fi
-	if [ -f /sys/block/mmcblk0/bdi/read_ahead_kb ]; then
-		echo $ra_kb > /sys/block/mmcblk0/bdi/read_ahead_kb
-	fi
-	if [ -f /sys/block/mmcblk0rpmb/bdi/read_ahead_kb ]; then
-		echo $ra_kb > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
-	fi
-	for dm in $dmpts; do
-		echo $ra_kb > $dm
-	done
 }
 
 function configure_memory_parameters() {
@@ -124,7 +96,6 @@ function configure_memory_parameters() {
 	ProductName=`getprop ro.product.name`
 
 	configure_zram_parameters
-	configure_read_ahead_kb_values
 	echo 100 > /proc/sys/vm/swappiness
 
         # Disable wsf  beacause we are using efk.
@@ -179,10 +150,6 @@ echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
 
 echo 0 > /proc/sys/kernel/sched_coloc_busy_hysteresis_enable_cpus
 
-# cpuset parameters
-echo 0-3 > /dev/cpuset/background/cpus
-echo 0-3 > /dev/cpuset/system-background/cpus
-
 # Turn off scheduler boost at the end
 echo 0 > /proc/sys/kernel/sched_boost
 
@@ -190,13 +157,9 @@ echo 0 > /proc/sys/kernel/sched_boost
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
 echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
 echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
-echo 1152000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
+echo 1324800 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
 echo 691200 > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
-echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
-
-# configure input boost settings
-echo "0:1152000" > /sys/devices/system/cpu/cpu_boost/input_boost_freq
-echo 120 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
+echo 1 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
 
 # configure governor settings for gold cluster
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy4/scaling_governor
@@ -209,7 +172,7 @@ echo -6 > /sys/devices/system/cpu/cpu4/sched_load_boost
 echo -6 > /sys/devices/system/cpu/cpu5/sched_load_boost
 echo -6 > /sys/devices/system/cpu/cpu6/sched_load_boost
 echo 0 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/rtg_boost_freq
-echo 0 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
+echo 1 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
 
 # configure governor settings for gold+ cluster
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
@@ -220,7 +183,7 @@ echo 806400 > /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq
 echo 85 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_load
 echo -6 > /sys/devices/system/cpu/cpu7/sched_load_boost
 echo 0 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/rtg_boost_freq
-echo 0 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
+echo 1 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
 
 # colocation V3 settings
 echo 691200 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/rtg_boost_freq

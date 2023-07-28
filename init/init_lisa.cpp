@@ -3,6 +3,8 @@
    Copyright (C) 2016 The CyanogenMod Project.
    Copyright (C) 2019-2020 The LineageOS Project.
    Copyright (C) 2021 The Android Open Source Project.
+   Copyright (C) 2022-2023 Paranoid Android.
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
    met:
@@ -41,8 +43,13 @@
 using android::base::GetProperty;
 using std::string;
 
-void property_override(char const prop[], char const value[])
-{
+// list of partitions to override props
+static const string source_partitions[] = {
+    "", "bootimage.", "odm.", "product.",
+    "system.", "system_ext.", "vendor."
+};
+
+void property_override(char const prop[], char const value[]) {
     auto pi = (prop_info*) __system_property_find(prop);
 
     if (pi != nullptr)
@@ -51,53 +58,37 @@ void property_override(char const prop[], char const value[])
         __system_property_add(prop, strlen(prop), value, strlen(value));
 }
 
-void set_ro_build_prop(const string &source, const string &prop,
-                       const string &value, bool product = true) {
+void set_ro_build_prop(const string &prop, const string &value) {
     string prop_name;
 
-    if (product)
-        prop_name = "ro.product." + source + prop;
-    else
-        prop_name = "ro." + source + "build." + prop;
-
-    property_override(prop_name.c_str(), value.c_str());
-}
-
-void set_device_props(const string model, const string name, const string marketname) {
-    // list of partitions to override props
-    string source_partitions[] = { "", "bootimage.", "odm.", "product.",
-                                   "system.", "system_ext.", "vendor." };
-
     for (const string &source : source_partitions) {
-        set_ro_build_prop(source, "model", model);
-        set_ro_build_prop(source, "name", name);
-        set_ro_build_prop(source, "marketname", marketname);
+        prop_name = "ro.product." + source + prop;
+        property_override(prop_name.c_str(), value.c_str());
     }
 }
 
-void load_miuicamera_properties() {
-    property_override("ro.product.mod_device", "lisa_global");
-    property_override("vendor.camera.aux.packagelist", "com.android.camera");
-    property_override("persist.vendor.camera.privapp.list", "com.android.camera");
-    property_override("ro.com.google.lens.oem_camera_package", "com.android.camera");
-    property_override("ro.miui.notch", "1");
+void set_device_props(const string model, const string name, const string marketname,
+        const string mod_device) {
+    set_ro_build_prop("model", model);
+    set_ro_build_prop("name", name);
+    set_ro_build_prop("marketname", marketname);
+
+    property_override("ro.product.mod_device", mod_device.c_str());
+    property_override("bluetooth.device.default_name", marketname.c_str());
 }
 
-void vendor_load_properties()
-{
-    // Detect device and configure properties
+void vendor_load_properties() {
+    // Detect variant and override properties
     string region = GetProperty("ro.boot.hwc", "");
 
-    if (region == "IN") { // India
-        set_device_props("2109119DI", "lisa_in", "Xiaomi 11 Lite NE");
-    } else if (region == "CN") { // China
-        set_device_props("2107119DC", "lisa", "Mi 11 LE");
+    if (region == "CN") { // China
+        set_device_props("2107119DC", "lisa", "Mi 11 LE", "lisa_global");
+    } else if (region == "IN") { // India
+        set_device_props("2109119DI", "lisa_in", "Xiaomi 11 Lite NE", "lisa_in_global");
     } else { // Global
-        set_device_props("2109119DG", "lisa_global", "Xiaomi 11 Lite 5G NE");
+        set_device_props("2109119DG", "lisa_global", "Xiaomi 11 Lite 5G NE", "lisa_global");
     }
 
-    load_miuicamera_properties();
-    
     // Set hardware revision
     property_override("ro.boot.hardware.revision", GetProperty("ro.boot.hwversion", "").c_str());
 }
